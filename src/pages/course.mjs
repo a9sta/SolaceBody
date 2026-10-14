@@ -2,8 +2,8 @@ import { layout, stack } from '../lib/html.mjs';
 import { esc, hash, won, josa, km2 } from '../lib/util.mjs';
 import { title, desc, clampDesc } from '../lib/seo.mjs';
 import * as S from '../lib/schema.mjs';
-import { factTable, faqBlock, stepList, noticeBlock, longtail, callBand, courseGrid } from '../lib/blocks.mjs';
-import { SEC } from '../content/copy.mjs';
+import { factTable, faqBlock, stepList, stepSet, noticeBlock, longtail, callBand, courseGrid, topicLinks, courseTopic } from '../lib/blocks.mjs';
+import { SEC, ANCHOR, COURSE_ANCHOR, DOC_LINKS } from '../content/copy.mjs';
 
 const at = (h, arr, slot = 0) => arr[parseInt(h.substr((slot * 3) % 29, 3), 16) % arr.length];
 
@@ -69,12 +69,17 @@ export function coursePage(ctx, c) {
 
   const { html: faqHtml, qa } = faqBlock(seed, fc, 5, '03');
 
-  const pool = [];
-  for (const r of regions) pool.push({ label: `${r.name} ${c.ko}`, href: `/${r.slug}/course/${c.slug}/` });
-  for (const r of regions) {
-    if (!r.main) continue;
-    for (const g of r.gu) pool.push({ label: `${g.name}`, href: `/${r.slug}/${g.slug}/` });
-  }
+  const bySido = regions.map((r) => ({ label: `${r.name} ${c.ko}`, href: `/${r.slug}/course/${c.slug}/` }));
+  const guList = [];
+  for (const r of regions) for (const g of r.gu) guList.push({ label: `${r.name} ${g.name}`, href: `/${r.slug}/${g.slug}/` });
+  const others2 = courses.filter((x) => x.slug !== c.slug).map((x) => ({ label: x.ko, href: `/course/${x.slug}/` }));
+  const steps = stepSet(seed);
+  const topics = topicLinks([
+    { label: `${c.ko}${josa(c.ko, '을/를')} 지역에서`, items: bySido, anchor: COURSE_ANCHOR },
+    { label: '다른 코스', items: others2, anchor: COURSE_ANCHOR },
+    { label: '시군구로 바로', items: guList, pick: 18, anchor: ANCHOR },
+    { label: '먼저 읽을 것', items: DOC_LINKS },
+  ], seed, '05', esc(at(h, SEC.topicHead, 8)), esc(at(h, SEC.topicSub, 3)));
 
   const body = [
     lede,
@@ -84,7 +89,7 @@ export function coursePage(ctx, c) {
     stepList(seed, '02'),
     faqHtml,
     noticeBlock(seed, '04'),
-    longtail(pool, seed, 22, 'regions', `${c.ko}${josa(c.ko, '을/를')} 지역에서 찾기`, '시도를 고르시면 그 지역 쪽으로 넘어갑니다.', '05'),
+    topics,
   ].join('\n');
 
   return {
@@ -110,6 +115,7 @@ export function coursePage(ctx, c) {
           courses: [c],
         }),
         S.faqPage(url, qa),
+        S.howTo(url, `${c.ko}${josa(c.ko, '을/를')} 부르는 다섯 걸음`, steps, cfg),
       ],
     }),
   };
@@ -161,25 +167,30 @@ export function sidoCoursePage(ctx, sd, c) {
 
   /* ★시군구가 한두 곳뿐인 서브 시도는 이것만으로 링크가 스무 개가 안 된다.
      다른 시도의 같은 코스 쪽을 함께 걸어 얇은 쪽이 생기지 않게 한다. */
-  const pool = [];
-  for (const g of sd.gu) pool.push({ label: `${g.name} ${c.ko}`, href: `/${sd.slug}/${g.slug}/` });
-  for (const x of courses) {
-    if (x.slug === c.slug) continue;
-    pool.push({ label: `${sd.name} ${x.ko}`, href: `/${sd.slug}/course/${x.slug}/` });
-  }
-  for (const r of regions) {
-    if (r.slug === sd.slug) continue;
-    pool.push({ label: `${r.name} ${c.ko}`, href: `/${r.slug}/course/${c.slug}/` });
-  }
+  const guHere = sd.gu.map((g) => ({ label: `${g.name}`, href: `/${sd.slug}/${g.slug}/` }));
+  const deepHere = [];
+  for (const g of sd.gu) for (const x of g.spots) deepHere.push({ label: `${g.name} ${x.name}`, href: `/${sd.slug}/${g.slug}/${x.slug}/` });
+  const otherCourse = courses.filter((x) => x.slug !== c.slug)
+    .map((x) => ({ label: `${sd.name} ${x.ko}`, href: `/${sd.slug}/course/${x.slug}/` }));
+  const sameCourse = regions.filter((r) => r.slug !== sd.slug)
+    .map((r) => ({ label: `${r.name} ${c.ko}`, href: `/${r.slug}/course/${c.slug}/` }));
+  const steps = stepSet(seed);
+  const topics = topicLinks([
+    { label: `${sd.name} 다른 코스`, items: otherCourse, anchor: COURSE_ANCHOR },
+    { label: `${c.ko}${josa(c.ko, '을/를')} 다른 지역에서`, items: sameCourse, anchor: COURSE_ANCHOR },
+    { label: `${sd.name} 시군구`, items: guHere, pick: 16, anchor: ANCHOR },
+    ...(deepHere.length ? [{ label: `${sd.name} 동으로 바로`, items: deepHere, pick: 14, anchor: ANCHOR }] : []),
+    { label: '먼저 읽을 것', items: DOC_LINKS },
+  ], seed, '04', esc(at(h, SEC.topicHead, 8)), esc(at(h, SEC.topicSub, 3)));
 
   const body = [
     lede,
     facts,
     callBand(cfg, `${sd.name} ${c.ko}`, seed),
-    courseGrid(courses, seed, sd.name, '01'),
+    courseGrid(courses, seed, sd.name, '01', { full: false }),
     faqHtml,
     stepList(seed, '03'),
-    longtail(pool, seed, 20, 'nearby', `${sd.name} 안에서 더 보기`, null, '04'),
+    topics,
   ].join('\n');
 
   return {
@@ -207,6 +218,7 @@ export function sidoCoursePage(ctx, sd, c) {
           courses: [c],
         }),
         S.faqPage(url, qa),
+        S.howTo(url, `${sd.name}에서 ${c.ko}${josa(c.ko, '을/를')} 부르는 다섯 걸음`, steps, cfg),
       ],
     }),
   };

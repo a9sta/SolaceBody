@@ -87,6 +87,7 @@ main{max-width:var(--w);margin:0 auto;padding:18px 20px 56px}
 .stack-h{margin:0 0 15px;padding-right:34px}
 .stack-no{margin:0 0 7px;display:block;font-family:var(--mono);font-size:10px;letter-spacing:.22em;
   color:var(--acc);text-transform:uppercase}
+.stack-no::before{content:attr(data-eyebrow)}
 .stack h2{margin:0;font-size:19px;font-weight:800;letter-spacing:-.028em;line-height:1.38}
 @media (min-width:720px){.stack h2{font-size:22px}}
 .stack-sb{margin:9px 0 0;font-size:14px;color:var(--dim)}
@@ -195,6 +196,34 @@ main{max-width:var(--w);margin:0 auto;padding:18px 20px 56px}
 .pair a:hover{background:var(--accSoft);text-decoration:none}
 .pair b{font-size:15px}
 .pair span{font-size:11px;color:var(--dim);font-family:var(--mono)}
+
+/* ── 해넘이 막대(지역 고르기) ──────────────────────
+   ★두 칸짜리 평범한 목록을 쓰지 않는다. 시도마다 하짓날 해가 지는 시각을
+     가로 막대로 눕혀 길이로 견주게 한다. 이 사이트가 재는 값 그대로다. */
+.dial{list-style:none;margin:0;padding:0}
+.dial li{border-bottom:1px solid var(--line)}
+.dial li:last-child{border-bottom:0}
+.dial a{display:grid;grid-template-columns:4.6rem 1fr auto;align-items:center;gap:12px;
+  padding:11px 2px;color:var(--ink)}
+.dial a:hover{text-decoration:none;background:var(--soft)}
+.dial-n{font-size:15px;font-weight:800;letter-spacing:-.02em}
+.dial-bar{display:block;height:10px;background:var(--soft);position:relative;overflow:hidden}
+.dial-bar i{display:block;height:100%;background:var(--acc)}
+.dial li.sub .dial-bar i{background:var(--sun);opacity:.8}
+.dial-v{font-family:var(--mono);font-size:11.5px;color:var(--dim);white-space:nowrap}
+.dial-key{margin:15px 0 0;font-size:12.5px;color:var(--dim)}
+.dial-key b{color:var(--accDk)}
+.dial-key i{font-style:normal;color:var(--sun)}
+@media (max-width:560px){
+  .dial a{grid-template-columns:4.2rem 1fr;row-gap:4px}
+  .dial-v{grid-column:1 / -1;text-align:right}
+}
+
+/* ── 주제 묶음 링크 ────────────────────────────────── */
+.topics{display:grid;gap:20px}
+@media (min-width:720px){.topics{grid-template-columns:1fr 1fr}}
+.topic-h{margin:0 0 9px;font-family:var(--mono);font-size:10px;letter-spacing:.2em;color:var(--sun);
+  border-bottom:1px solid var(--line);padding-bottom:6px}
 
 /* ── 글 ────────────────────────────────────────────── */
 .essay{max-width:46rem}

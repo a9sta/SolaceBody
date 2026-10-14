@@ -45,6 +45,7 @@ export function webpage({ url, siteUrl, title, desc, breadcrumbId }) {
     '@type': 'WebPage', '@id': `${url}#page`, url, name: title, description: desc,
     inLanguage: 'ko-KR', isPartOf: { '@id': `${siteUrl}/#site` },
     dateModified: '@@LM@@',
+    speakable: SPEAKABLE,
     ...(breadcrumbId ? { breadcrumb: { '@id': breadcrumbId } } : {}),
   };
 }
@@ -117,6 +118,65 @@ export function article({ url, siteUrl, title, desc, date, cfg }) {
     author: { '@id': `${siteUrl}/#org` }, publisher: { '@id': `${siteUrl}/#org` },
   };
 }
+
+/** 접수 절차 — HowTo. 다섯 걸음이 실제로 순서가 있는 절차라 그대로 맞는다. */
+export function howTo(url, name, steps, cfg) {
+  return {
+    '@type': 'HowTo', '@id': `${url}#howto`,
+    name, inLanguage: 'ko-KR',
+    totalTime: 'PT5M',
+    estimatedCost: { '@type': 'MonetaryAmount', currency: 'KRW', value: '0' },
+    supply: [
+      { '@type': 'HowToSupply', name: '누울 자리' },
+      { '@type': 'HowToSupply', name: '수건 두 장' },
+    ],
+    tool: [{ '@type': 'HowToTool', name: '전화' }],
+    step: steps.map((x, i) => ({
+      '@type': 'HowToStep', position: i + 1, name: x.t, text: x.d, url: `${url}#step`,
+    })),
+  };
+}
+
+/** 목록이 본문인 쪽(받는 자리·코스 허브·일지)은 CollectionPage 로 알린다. */
+export function collectionPage({ url, siteUrl, title, desc, listId }) {
+  return {
+    '@type': 'CollectionPage', '@id': `${url}#collection`,
+    url, name: title, description: desc, inLanguage: 'ko-KR',
+    isPartOf: { '@id': `${siteUrl}/#site` },
+    dateModified: '@@LM@@',
+    ...(listId ? { mainEntity: { '@id': listId } } : {}),
+  };
+}
+
+/** 금액 쪽 — 코스 전체를 하나의 가격대로 묶어 알린다. */
+export function aggregateOffer(url, courses, cfg) {
+  const prices = courses.map((c) => c.price);
+  return {
+    '@type': 'AggregateOffer', '@id': `${url}#offers`,
+    priceCurrency: 'KRW',
+    lowPrice: String(Math.min(...prices)),
+    highPrice: String(Math.max(...prices)),
+    offerCount: courses.length,
+    availability: 'https://schema.org/InStock',
+    offers: courses.map((c) => ({
+      '@type': 'Offer', name: `${c.ko} ${c.min}분`,
+      price: String(c.price), priceCurrency: 'KRW',
+      url: `${url.replace(/\/price\/$/, '')}/course/${c.slug}/`,
+      availability: 'https://schema.org/InStock',
+      priceSpecification: {
+        '@type': 'UnitPriceSpecification',
+        price: String(c.price), priceCurrency: 'KRW',
+        referenceQuantity: { '@type': 'QuantitativeValue', value: c.min, unitCode: 'MIN' },
+      },
+    })),
+  };
+}
+
+/** 음성·AI 가 먼저 읽을 자리를 짚어 준다. */
+export const SPEAKABLE = {
+  '@type': 'SpeakableSpecification',
+  cssSelector: ['h1', '.lede p', '.quiz h3', '.quiz p'],
+};
 
 export function graph(nodes) {
   return JSON.stringify({ '@context': CTX, '@graph': nodes.filter(Boolean) });

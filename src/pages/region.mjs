@@ -3,13 +3,15 @@ import { esc, hash, km2, won, josa } from '../lib/util.mjs';
 import { title, desc, clampDesc } from '../lib/seo.mjs';
 import * as S from '../lib/schema.mjs';
 import {
-  courseGrid, stepList, factTable, faqBlock, noticeBlock, longtail,
+  courseGrid, stepList, stepSet, factTable, faqBlock, noticeBlock, longtail,
   sunKin, spotIndex, ruralList, dongNameList, guIndex, nearList, callBand,
+  topicLinks, courseTopic,
 } from '../lib/blocks.mjs';
 import {
   SPOT_LEAD_A, SPOT_LEAD_B, SPOT_LEAD_C,
   GU_LEAD, SIDO_LEAD_MAIN, SIDO_LEAD_SUB, SEC,
   noonWord, dayWord, duskWord, northWord, spanWord,
+  ANCHOR, COURSE_ANCHOR, NEAR_ANCHOR, DOC_LINKS,
 } from '../content/copy.mjs';
 
 const at = (h, arr, slot = 0) => arr[parseInt(h.substr((slot * 3) % 29, 3), 16) % arr.length];
@@ -68,31 +70,43 @@ export function spotPage(ctx, sd, g, s) {
       ['여름과 겨울의 낮 차이', `${hourMin(s.gapMin)}`],
       ['쪽을 낸 칸 중 차례', `북에서 ${s.nsRank}번째 · 동에서 ${s.ewRank}번째`],
       ['땅', `${km2(s.area)} — ${esc(spanWord(s.area))}`],
-      ['여는 시각', `${esc(cfg.hours)} 접수 · ${esc(cfg.pay)} · 도착 ${esc(cfg.arrive)}`],
     ]),
     esc(at(h, SEC.factSub, 7)), '00');
 
   const { html: faqHtml, qa } = faqBlock(seed, c, 5, '06');
 
-  const pool = [];
+  const far = [];
   for (const r of regions) {
     if (r.slug === sd.slug) continue;
-    if (r.main) for (const x of r.gu) for (const y of x.spots) pool.push({ label: `${x.name} ${y.name}`, href: `/${r.slug}/${x.slug}/${y.slug}/` });
-    else for (const x of r.gu) pool.push({ label: `${r.name} ${x.name}`, href: `/${r.slug}/${x.slug}/` });
+    if (r.main) for (const x of r.gu) for (const y of x.spots) far.push({ label: `${x.name} ${y.name}`, href: `/${r.slug}/${x.slug}/${y.slug}/` });
+    else for (const x of r.gu) far.push({ label: `${r.name} ${x.name}`, href: `/${r.slug}/${x.slug}/` });
   }
+  const sameSido = [];
+  for (const x of sd.gu) {
+    if (x.slug === g.slug) continue;
+    for (const y of x.spots) sameSido.push({ label: `${x.name} ${y.name}`, href: `/${sd.slug}/${x.slug}/${y.slug}/` });
+  }
+  const steps = stepSet(seed);
+  const topics = topicLinks([
+    { label: '코스 이름으로', items: courseTopic(sd, courses), anchor: COURSE_ANCHOR },
+    { label: `${sd.name} 안 다른 칸`, items: sameSido, pick: 12, anchor: ANCHOR },
+    { label: '맞닿은 시군구', items: g.near.map((t) => ({ label: t.gu, href: `/${t.sidoSlug}/${t.slug}/` })), anchor: NEAR_ANCHOR },
+    { label: '다른 시도', items: far, pick: 14, anchor: ANCHOR },
+    { label: '먼저 읽을 것', items: DOC_LINKS },
+  ], seed, '08', esc(at(h, SEC.topicHead, 8)), esc(at(h, SEC.topicSub, 3)));
 
   const body = [
     lede,
     facts,
     callBand(cfg, `${g.name} ${s.name}`, seed),
-    courseGrid(courses, seed, s.name, '01'),
+    courseGrid(courses, seed, s.name, '01', { full: false }),
     sunKin(sd, g, s, seed, '02'),
     spotIndex(sd, g, seed, s.slug, '03'),
     stepList(seed, '04'),
     guIndex(sd, seed, g.slug, '05'),
     faqHtml,
     noticeBlock(seed, '07'),
-    longtail(pool, seed, 24, 'elsewhere', esc(at(h, SEC.crossHead, 8)), null, '08'),
+    topics,
   ].join('\n');
 
   return {
@@ -123,6 +137,7 @@ export function spotPage(ctx, sd, g, s) {
           courses,
         }),
         S.faqPage(url, qa),
+        S.howTo(url, `${g.name} ${s.name}에서 부르는 다섯 걸음`, steps, cfg),
       ],
     }),
   };
@@ -188,11 +203,18 @@ export function guPage(ctx, sd, g) {
 
   const { html: faqHtml, qa } = faqBlock(seed, c, 5, '05');
 
-  const pool = [];
+  const far = [];
   for (const r of regions) for (const x of r.gu) {
     if (r.slug === sd.slug && x.slug === g.slug) continue;
-    pool.push({ label: `${r.name} ${x.name}`, href: `/${r.slug}/${x.slug}/` });
+    far.push({ label: `${r.name} ${x.name}`, href: `/${r.slug}/${x.slug}/` });
   }
+  const steps = stepSet(seed);
+  const topics = topicLinks([
+    { label: '코스 이름으로', items: courseTopic(sd, courses), anchor: COURSE_ANCHOR },
+    { label: '맞닿은 시군구', items: g.near.map((t) => ({ label: t.gu, href: `/${t.sidoSlug}/${t.slug}/` })), anchor: NEAR_ANCHOR },
+    { label: '다른 시군구', items: far, pick: 18, anchor: ANCHOR },
+    { label: '먼저 읽을 것', items: DOC_LINKS },
+  ], seed, '09', esc(at(h, SEC.topicHead, 8)), esc(at(h, SEC.topicSub, 3)));
 
   const body = [
     lede,
@@ -200,13 +222,13 @@ export function guPage(ctx, sd, g) {
     callBand(cfg, `${sd.name} ${g.name}`, seed),
     mode === 'spot' ? spotIndex(sd, g, seed, null, '01') : mode === 'list' ? dongNameList(g, seed, '01') : '',
     ruralList(g, seed, '02'),
-    courseGrid(courses, seed, g.name, '03'),
+    courseGrid(courses, seed, g.name, '03', { full: false }),
     nearList(sd, g, seed, '04'),
     faqHtml,
     stepList(seed, '06'),
     noticeBlock(seed, '07'),
     guIndex(sd, seed, g.slug, '08'),
-    longtail(pool, seed, 20, 'districts', '옆 시군구에서 받는 자리', null, '09'),
+    topics,
   ].join('\n');
 
   return {
@@ -239,6 +261,7 @@ export function guPage(ctx, sd, g) {
           ? S.itemList(`${url}#spotlist`, `${g.name} 동`, g.spots.map((s) => ({ name: s.name, url: `${siteUrl}/${sd.slug}/${g.slug}/${s.slug}/` })))
           : null,
         S.faqPage(url, qa),
+        S.howTo(url, `${sd.name} ${g.name}에서 부르는 다섯 걸음`, steps, cfg),
       ].filter(Boolean),
     }),
   };
@@ -302,11 +325,20 @@ export function sidoPage(ctx, sd) {
       '행정동 수가 많을수록 같은 땅을 더 잘게 나눠 이름 붙였다는 뜻입니다.', '02');
   }
 
-  const pool = [];
+  const far = [];
   for (const r of regions) {
     if (r.slug === sd.slug) continue;
-    for (const x of r.gu) pool.push({ label: `${r.name} ${x.name}`, href: `/${r.slug}/${x.slug}/` });
+    for (const x of r.gu) far.push({ label: `${r.name} ${x.name}`, href: `/${r.slug}/${x.slug}/` });
   }
+  const deep = [];
+  for (const g of sd.gu) for (const x of g.spots) deep.push({ label: `${g.name} ${x.name}`, href: `/${sd.slug}/${g.slug}/${x.slug}/` });
+  const steps = stepSet(seed);
+  const topics = topicLinks([
+    { label: '코스 이름으로', items: courseTopic(sd, courses), anchor: COURSE_ANCHOR },
+    ...(deep.length ? [{ label: `${sd.name} 동으로 바로`, items: deep, pick: 16, anchor: ANCHOR }] : []),
+    { label: '다른 시도', items: far, pick: 16, anchor: ANCHOR },
+    { label: '먼저 읽을 것', items: DOC_LINKS },
+  ], seed, '07', esc(at(h, SEC.topicHead, 8)), esc(at(h, SEC.topicSub, 3)));
 
   const body = [
     lede,
@@ -318,7 +350,7 @@ export function sidoPage(ctx, sd) {
     courseGrid(courses, seed, sd.name, '04'),
     faqHtml,
     stepList(seed, '06'),
-    longtail(pool, seed, 20, 'provinces', '다른 시도에서 받는 자리', null, '07'),
+    topics,
   ].join('\n');
 
   return {
@@ -347,6 +379,7 @@ export function sidoPage(ctx, sd) {
         }),
         S.itemList(`${url}#gulist`, `${sd.name} 시군구`, sd.gu.map((g) => ({ name: g.name, url: `${siteUrl}/${sd.slug}/${g.slug}/` }))),
         S.faqPage(url, qa),
+        S.howTo(url, `${sd.name}에서 부르는 다섯 걸음`, steps, cfg),
       ],
     }),
   };

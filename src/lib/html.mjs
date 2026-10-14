@@ -186,7 +186,7 @@ function ledgeBar(cfg) {
 export function stack(id, label, h2, inner, sub, n) {
   return `<section class="stack" id="${id}" aria-labelledby="${id}-h">
   <header class="stack-h">
-    <span class="stack-no" aria-hidden="true">${esc(label)}${n ? ` / ${n}` : ''}</span>
+    <span class="stack-no" aria-hidden="true" data-eyebrow="${esc(label)}${n ? ` / ${n}` : ''}"></span>
     <h2 id="${id}-h">${h2}</h2>
     ${sub ? `<p class="stack-sb">${sub}</p>` : ''}
   </header>
